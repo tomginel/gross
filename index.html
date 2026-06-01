@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║       הקומונה של ביטוח לאומי — רשימת קניות משותפת          ║
+  ║                                                              ║
+  ║  הגדרת Firebase (פעם אחת בלבד):                             ║
+  ║  1. לך ל-console.firebase.google.com וצור פרויקט חדש        ║
+  ║  2. הוסף אפליקציית Web (סמל </>) וקבל את firebaseConfig     ║
+  ║  3. הפעל Realtime Database — בחר "test mode"                 ║
+  ║  4. החלף את הערכים ב-firebaseConfig בסקריפט למטה            ║
+  ║  5. שתף את הקובץ (GitHub Pages = חינם)                      ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>הקומונה של ביטוח לאומי</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root {
+      --cyan:    #00ffff;
+      --pink:    #ff00aa;
+      --green:   #00ff88;
+      --purple:  #cc00ff;
+      --yellow:  #ffee00;
+      --card-bg: rgba(8, 0, 25, 0.72);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rubik', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(-45deg, #0d0221, #1b053a, #0a1020, #220840, #081a10, #180028);
+      background-size: 600% 600%;
+      animation: psycho-bg 18s ease infinite;
+      color: #fff;
+      padding-bottom: 200px;
+    }
+
+    @keyframes psycho-bg {
+      0%   { background-position: 0% 50%; }
+      25%  { background-position: 50% 0%; }
+      50%  { background-position: 100% 50%; }
+      75%  { background-position: 50% 100%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* ─── Header ─── */
+    .header {
+      text-align: center;
+      padding: 24px 56px 14px;
+      position: relative;
+    }
+
+    .title {
+      font-size: clamp(1.5rem, 5.5vw, 2.6rem);
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      line-height: 1.25;
+      animation: rainbow-glow 4s linear infinite;
+    }
+
+    @keyframes rainbow-glow {
+      0%   { color: #ff0080; text-shadow: 0 0 12px #ff0080, 0 0 28px #ff0080, 0 0 55px rgba(255,0,128,0.4); }
+      16%  { color: #ff8c00; text-shadow: 0 0 12px #ff8c00, 0 0 28px #ff8c00, 0 0 55px rgba(255,140,0,0.4); }
+      33%  { color: #ffee00; text-shadow: 0 0 12px #ffee00, 0 0 28px #ffee00, 0 0 55px rgba(255,238,0,0.4); }
+      50%  { color: #00ff88; text-shadow: 0 0 12px #00ff88, 0 0 28px #00ff88, 0 0 55px rgba(0,255,136,0.4); }
+      66%  { color: #00ffff; text-shadow: 0 0 12px #00ffff, 0 0 28px #00ffff, 0 0 55px rgba(0,255,255,0.4); }
+      83%  { color: #cc00ff; text-shadow: 0 0 12px #cc00ff, 0 0 28px #cc00ff, 0 0 55px rgba(204,0,255,0.4); }
+      100% { color: #ff0080; text-shadow: 0 0 12px #ff0080, 0 0 28px #ff0080, 0 0 55px rgba(255,0,128,0.4); }
+    }
+
+    .connection-status {
+      margin-top: 5px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #555;
+      display: inline-block;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    .settings-btn {
+      position: absolute;
+      top: 22px;
+      left: 14px;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.7);
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .settings-btn:hover { border-color: var(--purple); box-shadow: 0 0 10px var(--purple); }
+
+    /* ─── Identity bar ─── */
+    .identity-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 6px 16px 10px;
+      font-size: 0.88rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .identity-bar select {
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: #fff;
+      border-radius: 7px;
+      padding: 4px 10px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      direction: rtl;
+    }
+    .identity-bar select:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+    /* ─── Add form ─── */
+    .add-form {
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 14px;
+      padding: 14px;
+      backdrop-filter: blur(12px);
+    }
+
+    .add-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-form input[type="text"] {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      border-radius: 9px;
+      padding: 10px 13px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 1rem;
+      direction: rtl;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 0;
+    }
+    .add-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 8px rgba(0,255,136,0.45);
+    }
+    .add-form input::placeholder { color: rgba(255,255,255,0.28); }
+
+    .add-btn {
+      background: var(--green);
+      color: #001a0a;
+      border: none;
+      border-radius: 9px;
+      padding: 10px 18px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: box-shadow 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    .add-btn:hover { box-shadow: 0 0 14px var(--green), 0 0 28px rgba(0,255,136,0.35); transform: scale(1.02); }
+    .add-btn:active { transform: scale(0.97); }
+
+    .type-toggle {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .type-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 9px;
+      border: 2px solid rgba(255,255,255,0.1);
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.4);
+      transition: all 0.2s;
+    }
+    .type-btn.sel-perm {
+      background: rgba(0,255,255,0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 8px rgba(0,255,255,0.25);
+    }
+    .type-btn.sel-dynamic {
+      background: rgba(255,0,170,0.12);
+      border-color: var(--pink);
+      color: var(--pink);
+      box-shadow: 0 0 8px rgba(255,0,170,0.25);
+    }
+
+    /* ─── Section cards ─── */
+    .section {
+      margin: 0 14px 14px;
+      background: var(--card-bg);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+    .section-perm    { border: 1px solid rgba(0,255,255,0.32); }
+    .section-dynamic { border: 1px solid rgba(255,0,170,0.32); }
+
+    .section-header {
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 700;
+      font-size: 0.97rem;
+    }
+    .section-perm .section-header {
+      background: rgba(0,255,255,0.09);
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(0,255,255,0.18);
+      text-shadow: 0 0 8px rgba(0,255,255,0.5);
+    }
+    .section-dynamic .section-header {
+      background: rgba(255,0,170,0.09);
+      color: var(--pink);
+      border-bottom: 1px solid rgba(255,0,170,0.18);
+      text-shadow: 0 0 8px rgba(255,0,170,0.5);
+    }
+
+    .item-count {
+      margin-right: auto;
+      font-size: 0.78rem;
+      font-weight: 400;
+      opacity: 0.55;
+    }
+
+    /* ─── Items ─── */
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.045);
+      transition: background 0.15s, opacity 0.25s;
+    }
+    .item:last-child { border-bottom: none; }
+    .item:hover { background: rgba(255,255,255,0.035); }
+
+    .item.checked { opacity: 0.4; }
+    .item.checked .item-text {
+      text-decoration: line-through;
+      text-decoration-color: rgba(255,255,255,0.45);
+    }
+
+    .item-check {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .item-text {
+      flex: 1;
+      font-size: 0.98rem;
+      word-break: break-word;
+    }
+
+    .item-by {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.3);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .item-del {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.18);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 5px;
+      border-radius: 5px;
+      transition: color 0.15s;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .item-del:hover { color: #ff4455; }
+
+    .empty-msg {
+      padding: 18px 14px;
+      color: rgba(255,255,255,0.22);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    /* ─── Bottom panel (form + reset) ─── */
+    .bottom-panel {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      padding: 10px 14px 18px;
+      background: linear-gradient(to top, rgba(5,0,15,0.99) 70%, transparent);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .reset-btn {
+      background: transparent;
+      border: 2px solid var(--pink);
+      color: var(--pink);
+      border-radius: 12px;
+      padding: 12px 28px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.97rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      animation: pulse-pink 2.8s ease-in-out infinite;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .reset-btn:hover {
+      background: rgba(255,0,170,0.18);
+      box-shadow: 0 0 20px rgba(255,0,170,0.6), 0 0 40px rgba(255,0,170,0.25);
+      animation: none;
+    }
+    @keyframes pulse-pink {
+      0%, 100% { box-shadow: 0 0 8px rgba(255,0,170,0.35); }
+      50%       { box-shadow: 0 0 18px rgba(255,0,170,0.7), 0 0 36px rgba(255,0,170,0.25); }
+    }
+
+    /* ─── Settings modal ─── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,8,0.82);
+      backdrop-filter: blur(5px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: #0e0024;
+      border: 1px solid var(--purple);
+      border-radius: 16px;
+      padding: 22px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 0 32px rgba(204,0,255,0.28);
+    }
+
+    .modal h2 {
+      color: var(--purple);
+      font-size: 1.1rem;
+      margin-bottom: 16px;
+      text-shadow: 0 0 10px var(--purple);
+    }
+
+    .modal label {
+      display: block;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.45);
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+
+    .modal input[type="text"] {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.93rem;
+      direction: rtl;
+    }
+    .modal input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 6px rgba(204,0,255,0.4); }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-save {
+      flex: 1;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 11px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.93rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: box-shadow 0.2s;
+    }
+    .btn-save:hover { box-shadow: 0 0 14px var(--purple); }
+
+    .btn-cancel {
+      flex: 1;
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 11px;
+      font-family: 'Rubik', sans-serif;
+      font-size: 0.93rem;
+      cursor: pointer;
+    }
+    .btn-cancel:hover { border-color: rgba(255,255,255,0.35); }
+
+    /* ─── Setup screen ─── */
+    .setup-screen {
+      margin: 16px 14px;
+      background: rgba(28,10,0,0.75);
+      border: 1px solid var(--yellow);
+      border-radius: 14px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .setup-screen h2 {
+      color: var(--yellow);
+      text-shadow: 0 0 10px var(--yellow);
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+    }
+    .setup-screen ol {
+      padding-right: 22px;
+      color: rgba(255,255,255,0.72);
+      font-size: 0.88rem;
+      line-height: 2;
+      direction: rtl;
+    }
+    .setup-screen code {
+      background: rgba(255,238,0,0.1);
+      color: var(--yellow);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 0.83em;
+    }
+    .setup-screen a { color: var(--cyan); }
+
+    @media (max-width: 380px) {
+      .add-row { flex-wrap: wrap; }
+      .add-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <button class="settings-btn" onclick="openSettings()">⚙️</button>
+  <div class="title">הקומונה של ביטוח לאומי</div>
+  <div class="connection-status">
+    <span class="dot" id="dot"></span>
+    <span id="conn-text">מתחבר...</span>
+  </div>
+</div>
+
+<div class="identity-bar">
+  <span>אתה:</span>
+  <select id="name-sel" onchange="changeMyName(this.value)"></select>
+</div>
+
+<!-- Shown only when Firebase is not configured -->
+<div id="setup-screen" class="setup-screen" style="display:none">
+  <h2>⚡ נדרשת הגדרת Firebase</h2>
+  <ol>
+    <li>לך ל-<a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> וצור פרויקט</li>
+    <li>לחץ "Add app" ← סמל Web <code>&lt;/&gt;</code> וקבל את <code>firebaseConfig</code></li>
+    <li>הפעל <strong>Realtime Database</strong> — בחר <em>test mode</em></li>
+    <li>פתח את הקובץ <code>index.html</code> בעורך טקסט</li>
+    <li>מצא את <code>firebaseConfig</code> בסקריפט והחלף את שבעת הערכים</li>
+    <li>שמור ורענן — הרשימה תתחיל לעבוד בין כל הטלפונים</li>
+  </ol>
+</div>
+
+<!-- Main app (shown when configured) -->
+<div id="app" style="display:none">
+
+  <div class="section section-perm">
+    <div class="section-header">
+      ♾️ <span>מוצרים קבועים</span>
+      <span class="item-count" id="perm-count"></span>
+    </div>
+    <div id="perm-list"></div>
+  </div>
+
+  <div class="section section-dynamic">
+    <div class="section-header">
+      🛒 <span>קניות הפעם</span>
+      <span class="item-count" id="dynamic-count"></span>
+    </div>
+    <div id="dynamic-list"></div>
+  </div>
+
+</div>
+
+<!-- Fixed bottom panel: add form + reset -->
+<div class="bottom-panel" id="bottom-panel" style="display:none">
+  <div class="add-form">
+    <div class="add-row">
+      <input type="text" id="item-input" placeholder="שם המוצר..."
+        onkeydown="if(event.key==='Enter') addItem()">
+      <button class="add-btn" onclick="addItem()">+ הוסף</button>
+    </div>
+    <div class="type-toggle">
+      <button class="type-btn sel-perm" id="btn-perm"    onclick="setType('perm')">♾️ קבוע לתמיד</button>
+      <button class="type-btn"          id="btn-dynamic" onclick="setType('dynamic')">🛒 הפעם בלבד</button>
+    </div>
+  </div>
+  <button class="reset-btn" onclick="resetShopping()">✅ סיום קניות — נקה את הרשימה</button>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settings-overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <h2>⚙️ שמות השותפים</h2>
+    <label>שותף 1</label><input type="text" id="n0">
+    <label>שותף 2</label><input type="text" id="n1">
+    <label>שותף 3</label><input type="text" id="n2">
+    <label>שותף 4</label><input type="text" id="n3">
+    <div class="modal-actions">
+      <button class="btn-save"   onclick="saveSettings()">שמור</button>
+      <button class="btn-cancel" onclick="closeSettings()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════════════════
+  //  FIREBASE CONFIG  — החלף את שבעת הערכים בשלך
+  // ════════════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBnJYlN28Ov--Gv4EjMF7UNCXpm4OhpGGM",
+    authDomain:        "gorss-66b35.firebaseapp.com",
+    databaseURL:       "https://gorss-66b35-default-rtdb.firebaseio.com",
+    projectId:         "gorss-66b35",
+    storageBucket:     "gorss-66b35.firebasestorage.app",
+    messagingSenderId: "851460404616",
+    appId:             "1:851460404616:web:306def0d8355f6604c363d"
+  };
+  // ════════════════════════════════════════════════════════
+
+  const CONFIGURED = !firebaseConfig.databaseURL.includes('YOUR_PROJECT');
+
+  let names  = JSON.parse(localStorage.getItem('roommates') || 'null') || ['שותף 1','שותף 2','שותף 3','שותף 4'];
+  let myName = localStorage.getItem('myName') || names[0];
+  let mode   = 'perm';
+  let db     = null;
+
+  // ─── Boot ───────────────────────────────────────────────
+  function boot() {
+    populateSelect();
+    if (!CONFIGURED) {
+      document.getElementById('setup-screen').style.display = 'block';
+      document.getElementById('conn-text').textContent = 'לא מחובר';
+      return;
+    }
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('reset-bar').style.display = 'block';
+    initFirebase();
+  }
+
+  function initFirebase() {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+    db.ref('.info/connected').on('value', s => {
+      const on = !!s.val();
+      document.getElementById('dot').className = 'dot' + (on ? ' online' : '');
+      document.getElementById('conn-text').textContent = on ? 'מחובר' : 'מתחבר...';
+    });
+
+    db.ref('items').on('value', s => render(s.val() || {}));
+  }
+
+  // ─── Render ─────────────────────────────────────────────
+  function render(data) {
+    const perm    = [];
+    const dynamic = [];
+    Object.entries(data).forEach(([id, item]) => {
+      (item.permanent ? perm : dynamic).push({ id, ...item });
+    });
+    perm.sort((a, b) => a.createdAt - b.createdAt);
+    dynamic.sort((a, b) => a.createdAt - b.createdAt);
+
+    renderList('perm-list',    'perm-count',    perm,    'אין מוצרים קבועים עדיין');
+    renderList('dynamic-list', 'dynamic-count', dynamic, 'אין מוצרים ברשימה הנוכחית');
+  }
+
+  function renderList(listId, countId, items, emptyMsg) {
+    const list  = document.getElementById(listId);
+    const count = document.getElementById(countId);
+
+    if (!items.length) {
+      list.innerHTML = `<div class="empty-msg">${emptyMsg}</div>`;
+      count.textContent = '';
+      return;
+    }
+
+    const done = items.filter(i => i.checked).length;
+    count.textContent = `${done}/${items.length}`;
+
+    list.innerHTML = items.map(({ id, text, addedBy, checked }) => `
+      <div class="item${checked ? ' checked' : ''}">
+        <input class="item-check" type="checkbox" ${checked ? 'checked' : ''}
+          onchange="toggleCheck('${id}',this.checked)">
+        <span class="item-text">${esc(text)}</span>
+        <span class="item-by">${esc(addedBy || '')}</span>
+        <button class="item-del" onclick="deleteItem('${id}')" title="מחק">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ─── Actions ────────────────────────────────────────────
+  function addItem() {
+    if (!db) return;
+    const inp  = document.getElementById('item-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    db.ref('items').push({
+      text,
+      addedBy:   myName,
+      permanent: mode === 'perm',
+      checked:   false,
+      createdAt: Date.now()
+    });
+    inp.value = '';
+    inp.focus();
+  }
+
+  function toggleCheck(id, checked) {
+    db && db.ref('items/' + id + '/checked').set(checked);
+  }
+
+  function deleteItem(id) {
+    db && db.ref('items/' + id).remove();
+  }
+
+  function resetShopping() {
+    if (!db) return;
+    if (!confirm('לסיים את הקנייה?\n\nמוצרים חד-פעמיים יימחקו.\nמוצרים קבועים יסומנו מחדש כ-"לא נרכש".')) return;
+    db.ref('items').once('value', s => {
+      const data = s.val() || {};
+      Object.entries(data).forEach(([id, item]) => {
+        if (!item.permanent)  db.ref('items/' + id).remove();
+        else if (item.checked) db.ref('items/' + id + '/checked').set(false);
+      });
+    });
+  }
+
+  // ─── Type toggle ────────────────────────────────────────
+  function setType(t) {
+    mode = t;
+    document.getElementById('btn-perm').className    = 'type-btn' + (t === 'perm'    ? ' sel-perm'    : '');
+    document.getElementById('btn-dynamic').className = 'type-btn' + (t === 'dynamic' ? ' sel-dynamic' : '');
+  }
+
+  // ─── Identity ───────────────────────────────────────────
+  function populateSelect() {
+    const sel = document.getElementById('name-sel');
+    sel.innerHTML = names.map(n =>
+      `<option value="${esc(n)}"${n === myName ? ' selected' : ''}>${esc(n)}</option>`
+    ).join('');
+  }
+
+  function changeMyName(n) {
+    myName = n;
+    localStorage.setItem('myName', n);
+  }
+
+  // ─── Settings ───────────────────────────────────────────
+  function openSettings() {
+    names.forEach((n, i) => { document.getElementById('n' + i).value = n; });
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+
+  function closeSettings() {
+    document.getElementById('settings-overlay').classList.remove('open');
+  }
+
+  function overlayClick(e) {
+    if (e.target === document.getElementById('settings-overlay')) closeSettings();
+  }
+
+  function saveSettings() {
+    const saved = [0,1,2,3].map(i => {
+      const v = document.getElementById('n' + i).value.trim();
+      return v || ('שותף ' + (i + 1));
+    });
+    names = saved;
+    localStorage.setItem('roommates', JSON.stringify(saved));
+    if (!saved.includes(myName)) {
+      myName = saved[0];
+      localStorage.setItem('myName', myName);
+    }
+    populateSelect();
+    closeSettings();
+  }
+
+  boot();
+</script>
+</body>
+</html>
