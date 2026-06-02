@@ -547,6 +547,18 @@
     <span class="dot" id="dot"></span>
     <span id="conn-text">מתחבר...</span>
   </div>
+  <div class="countdown-wrap" id="cd-wrap">
+    <div class="countdown-label">⏳ עד קניות רביעי 08:00</div>
+    <div class="countdown-timer">
+      <div class="cd-unit"><span class="cd-num" id="cd-d">--</span><span class="cd-lbl">ימים</span></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span class="cd-num" id="cd-h">--</span><span class="cd-lbl">שעות</span></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span class="cd-num" id="cd-m">--</span><span class="cd-lbl">דקות</span></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span class="cd-num" id="cd-s">--</span><span class="cd-lbl">שניות</span></div>
+    </div>
+  </div>
 </div>
 
 <div class="identity-bar">
@@ -796,6 +808,73 @@
     populateSelect();
     closeSettings();
   }
+
+  // ─── Countdown to next Wednesday 08:00 (Israel time) ────
+  function nextWednesdayTarget() {
+    const now = new Date();
+
+    // Get Israel time parts reliably via Intl.DateTimeFormat.formatToParts
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).formatToParts(now)
+        .filter(p => p.type !== 'literal')
+        .map(p => [p.type, +p.value])
+    );
+
+    // hour12:false can return 24 for midnight in some browsers — normalize
+    if (parts.hour === 24) parts.hour = 0;
+
+    // Weekday of the Israel date (0=Sun … 6=Sat)
+    const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+
+    let daysUntil = (3 - weekday + 7) % 7;
+    if (daysUntil === 0 && (parts.hour > 8 || (parts.hour === 8 && (parts.minute > 0 || parts.second > 0)))) {
+      daysUntil = 7;
+    }
+
+    // Israel wall-clock offset from UTC (ms) — derived without parsing locale strings
+    const israelWallMs = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const offsetMs = israelWallMs - now.getTime();
+
+    // Target = Israel date + daysUntil days at 08:00, converted back to real UTC
+    const targetIsraelWallMs = Date.UTC(parts.year, parts.month - 1, parts.day + daysUntil, 8, 0, 0);
+    return new Date(targetIsraelWallMs - offsetMs);
+  }
+
+  function updateCountdown() {
+    const now    = new Date();
+    const target = nextWednesdayTarget();
+    const diff   = target - now;
+    const wrap   = document.getElementById('cd-wrap');
+
+    if (diff <= 0) {
+      wrap.classList.add('expired');
+      document.getElementById('cd-d').textContent = '00';
+      document.getElementById('cd-h').textContent = '00';
+      document.getElementById('cd-m').textContent = '00';
+      document.getElementById('cd-s').textContent = '00';
+      return;
+    }
+
+    wrap.classList.remove('expired');
+    const totalSec = Math.floor(diff / 1000);
+    const s = totalSec % 60;
+    const m = Math.floor(totalSec / 60) % 60;
+    const h = Math.floor(totalSec / 3600) % 24;
+    const d = Math.floor(totalSec / 86400);
+
+    document.getElementById('cd-d').textContent = String(d).padStart(2, '0');
+    document.getElementById('cd-h').textContent = String(h).padStart(2, '0');
+    document.getElementById('cd-m').textContent = String(m).padStart(2, '0');
+    document.getElementById('cd-s').textContent = String(s).padStart(2, '0');
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
 
   boot();
 </script>
