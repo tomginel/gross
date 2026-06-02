@@ -85,6 +85,66 @@
       gap: 6px;
     }
 
+    /* ─── Countdown ─── */
+    .countdown-wrap {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .countdown-label {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.5px;
+    }
+
+    .countdown-timer {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .cd-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .cd-num {
+      font-size: clamp(1.3rem, 4.5vw, 1.9rem);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--yellow);
+      text-shadow: 0 0 10px rgba(255,238,0,0.7), 0 0 24px rgba(255,238,0,0.3);
+      min-width: 2ch;
+      text-align: center;
+    }
+
+    .cd-lbl {
+      font-size: 0.6rem;
+      color: rgba(255,238,0,0.45);
+      letter-spacing: 0.3px;
+    }
+
+    .cd-sep {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: rgba(255,238,0,0.4);
+      line-height: 1;
+      padding-bottom: 12px;
+    }
+
+    .countdown-wrap.expired .cd-num {
+      color: var(--pink);
+      text-shadow: 0 0 10px rgba(255,0,170,0.7), 0 0 24px rgba(255,0,170,0.3);
+    }
+    .countdown-wrap.expired .cd-lbl {
+      color: rgba(255,0,170,0.45);
+    }
+
     .dot {
       width: 7px;
       height: 7px;
